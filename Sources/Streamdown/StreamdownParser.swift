@@ -648,7 +648,7 @@ public struct StreamdownParser: Sendable {
     }
 }
 
-internal extension String {
+public extension String {
     func characterSlice(from offset: Int) -> String {
         guard offset > 0 else { return self }
         guard offset < count else { return "" }

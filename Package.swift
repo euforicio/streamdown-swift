@@ -4,7 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "Streamdown",
-    platforms: [.iOS(.v16), .macOS(.v13), .visionOS(.v1)],
+    platforms: [.iOS(.v17), .macOS(.v14), .visionOS(.v1)],
     products: [
         .library(name: "Streamdown", targets: ["Streamdown"]),
         .library(name: "StreamdownUI", targets: ["StreamdownUI"]),
