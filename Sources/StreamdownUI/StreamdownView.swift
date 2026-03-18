@@ -26,6 +26,19 @@ extension Theme {
 
 // MARK: - StreamdownView
 
+public struct StreamdownAnimationConfig: Sendable {
+    public let enabled: Bool
+    public let staggerDelay: TimeInterval
+
+    public init(enabled: Bool = true, staggerDelay: TimeInterval = 0.04) {
+        self.enabled = enabled
+        self.staggerDelay = staggerDelay
+    }
+
+    public static let `default` = StreamdownAnimationConfig()
+    public static let none = StreamdownAnimationConfig(enabled: false)
+}
+
 public struct StreamdownView: View {
     let content: String
     let mode: StreamdownMode
@@ -34,11 +47,13 @@ public struct StreamdownView: View {
     let linkSafety: StreamdownLinkSafetyConfig
     let parseIncompleteMarkdown: Bool
     let normalizeHtmlIndentation: Bool
+    let animation: StreamdownAnimationConfig
 
     @Environment(\.streamdownTheme) private var theme
     @State private var modalURL: URL?
     @State private var modalIsPresented: Bool = false
     @State private var renderModel = StreamdownRenderModel()
+    @State private var visibleBlockIDs: Set<String> = []
 
     public init(
         content: String,
@@ -46,7 +61,8 @@ public struct StreamdownView: View {
         controls: StreamdownControls = .default,
         parseIncompleteMarkdown: Bool = true,
         normalizeHtmlIndentation: Bool = false,
-        linkSafety: StreamdownLinkSafetyConfig = .enabled
+        linkSafety: StreamdownLinkSafetyConfig = .enabled,
+        animation: StreamdownAnimationConfig = .default
     ) {
         self.init(
             content: content,
@@ -54,7 +70,8 @@ public struct StreamdownView: View {
             controls: controls,
             parseIncompleteMarkdown: parseIncompleteMarkdown,
             normalizeHtmlIndentation: normalizeHtmlIndentation,
-            linkSafety: linkSafety
+            linkSafety: linkSafety,
+            animation: animation
         )
     }
 
@@ -64,7 +81,8 @@ public struct StreamdownView: View {
         controls: StreamdownControls = .default,
         parseIncompleteMarkdown: Bool = true,
         normalizeHtmlIndentation: Bool = false,
-        linkSafety: StreamdownLinkSafetyConfig = .enabled
+        linkSafety: StreamdownLinkSafetyConfig = .enabled,
+        animation: StreamdownAnimationConfig = .default
     ) {
         self.content = content
         self.mode = mode
@@ -73,6 +91,7 @@ public struct StreamdownView: View {
         self.parseIncompleteMarkdown = mode == .streaming ? parseIncompleteMarkdown : false
         self.normalizeHtmlIndentation = normalizeHtmlIndentation
         self.linkSafety = linkSafety
+        self.animation = animation
     }
 
     public static func parseBlocks(
@@ -98,19 +117,32 @@ public struct StreamdownView: View {
         )
 
         VStack(alignment: .leading, spacing: theme.spacing.md) {
-            ForEach(renderModel.snapshot.blocks, id: \.id) { block in
-                switch block {
-                case let .markdown(markdown):
-                    markdownBlock(markdown)
-                case let .code(code):
-                    codeBlock(
-                        language: code.language,
-                        code: code.code,
-                        startLine: code.startLine,
-                        isIncomplete: code.isIncomplete
-                    )
-                case let .table(table):
-                    tableBlock(table)
+            ForEach(Array(renderModel.snapshot.blocks.enumerated()), id: \.element.id) { index, block in
+                Group {
+                    switch block {
+                    case let .markdown(markdown):
+                        markdownBlock(markdown)
+                    case let .code(code):
+                        codeBlock(
+                            language: code.language,
+                            code: code.code,
+                            startLine: code.startLine,
+                            isIncomplete: code.isIncomplete
+                        )
+                    case let .table(table):
+                        tableBlock(table)
+                    }
+                }
+                .opacity(visibleBlockIDs.contains(block.id) ? 1 : (animation.enabled && isStreaming ? 0 : 1))
+                .onAppear {
+                    guard animation.enabled, isStreaming, !visibleBlockIDs.contains(block.id) else {
+                        visibleBlockIDs.insert(block.id)
+                        return
+                    }
+                    let delay = animation.staggerDelay * Double(index)
+                    _ = withAnimation(.easeOut(duration: 0.25).delay(delay)) {
+                        visibleBlockIDs.insert(block.id)
+                    }
                 }
             }
         }
@@ -167,7 +199,8 @@ public struct StreamdownView: View {
                     isStreaming: isStreaming,
                     showFullscreen: isMermaidFlowchart ? controls.mermaid.fullscreen : false,
                     isMermaid: isMermaidFlowchart,
-                    mermaidPanZoom: controls.mermaid.panZoom
+                    mermaidPanZoom: controls.mermaid.panZoom,
+                    showLineNumbers: controls.code.lineNumbers
                 )
             )
         }

@@ -571,6 +571,7 @@ struct StreamdownCodeBlockView: View {
     let showFullscreen: Bool
     let isMermaid: Bool
     let mermaidPanZoom: Bool
+    var showLineNumbers: Bool = false
 
     @Environment(\.streamdownTheme) private var theme
     @State private var copied = false
@@ -661,7 +662,7 @@ struct StreamdownCodeBlockView: View {
                     StreamdownCodeBlockContent(
                         language: normalizedLanguage,
                         code: code,
-                        showLineNumbers: false,
+                        showLineNumbers: showLineNumbers,
                         showHeader: false
                     )
                 }

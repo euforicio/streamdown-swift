@@ -9,7 +9,7 @@ public struct StreamdownTableData: Sendable {
         self.rows = rows
     }
 
-    public func toCSV() -> String {
+    public func toCSV(excelCompatible: Bool = false) -> String {
         let escapeCSV: (String) -> String = { value in
             let needsEscaping = value.contains("\"") || value.contains(",") || value.contains("\n")
             if !needsEscaping { return value }
@@ -26,7 +26,11 @@ public struct StreamdownTableData: Sendable {
         for row in rows {
             output.append(row.map(escapeCSV).joined(separator: ","))
         }
-        return output.joined(separator: "\n")
+        let csv = output.joined(separator: "\n")
+        if excelCompatible {
+            return "\u{FEFF}" + csv
+        }
+        return csv
     }
 
     public func toTSV() -> String {

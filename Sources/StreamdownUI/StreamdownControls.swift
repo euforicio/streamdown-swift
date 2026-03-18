@@ -26,11 +26,13 @@ public struct StreamdownControls: Sendable {
         public let enabled: Bool
         public let copy: Bool
         public let download: Bool
+        public let lineNumbers: Bool
 
-        public init(enabled: Bool = true, copy: Bool = true, download: Bool = false) {
+        public init(enabled: Bool = true, copy: Bool = true, download: Bool = false, lineNumbers: Bool = false) {
             self.enabled = enabled
             self.copy = copy
             self.download = download
+            self.lineNumbers = lineNumbers
         }
     }
 

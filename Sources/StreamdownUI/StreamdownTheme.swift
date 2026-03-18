@@ -115,6 +115,23 @@ public struct StreamdownTheme: Sendable {
     }
 
     public static let `default` = StreamdownTheme()
+
+    public static let dark = StreamdownTheme()
+
+    public static let light = StreamdownTheme(
+        colors: Colors(
+            background: Color(white: 0.98),
+            foreground: Color(white: 0.10),
+            secondaryBackground: Color(white: 0.95),
+            tertiaryBackground: Color(white: 0.92),
+            secondaryLabel: Color(white: 0.45),
+            tertiaryLabel: Color(white: 0.60),
+            mutedForeground: Color(white: 0.45),
+            border: Color(white: 0.84),
+            separator: Color(white: 0.84),
+            card: Color(white: 0.95)
+        )
+    )
 }
 
 private struct StreamdownThemeKey: EnvironmentKey {
@@ -125,5 +142,21 @@ extension EnvironmentValues {
     public var streamdownTheme: StreamdownTheme {
         get { self[StreamdownThemeKey.self] }
         set { self[StreamdownThemeKey.self] = newValue }
+    }
+}
+
+// MARK: - Automatic Theme Modifier
+
+public struct StreamdownAutomaticThemeModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    public func body(content: Content) -> some View {
+        content.environment(\.streamdownTheme, colorScheme == .dark ? .dark : .light)
+    }
+}
+
+extension View {
+    public func streamdownAutomaticTheme() -> some View {
+        modifier(StreamdownAutomaticThemeModifier())
     }
 }

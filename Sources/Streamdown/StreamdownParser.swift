@@ -13,6 +13,44 @@ public struct StreamdownParser: Sendable {
         let startLine: Int?
     }
 
+    // MARK: - Regex Pattern Cache
+
+    private static let patternCacheLock = NSLock()
+    nonisolated(unsafe) private static var openTagPatternCache: [String: NSRegularExpression] = [:]
+    nonisolated(unsafe) private static var closeTagPatternCache: [String: NSRegularExpression] = [:]
+
+    private static func cachedOpenTagPattern(for tag: String) -> NSRegularExpression? {
+        let key = tag.lowercased()
+        patternCacheLock.lock()
+        defer { patternCacheLock.unlock() }
+        if let cached = openTagPatternCache[key] {
+            return cached
+        }
+        let escapedTag = NSRegularExpression.escapedPattern(for: key)
+        guard let regex = try? NSRegularExpression(
+            pattern: "<\\s*\(escapedTag)\\b[^>]*>",
+            options: [.caseInsensitive]
+        ) else { return nil }
+        openTagPatternCache[key] = regex
+        return regex
+    }
+
+    private static func cachedCloseTagPattern(for tag: String) -> NSRegularExpression? {
+        let key = tag.lowercased()
+        patternCacheLock.lock()
+        defer { patternCacheLock.unlock() }
+        if let cached = closeTagPatternCache[key] {
+            return cached
+        }
+        let escapedTag = NSRegularExpression.escapedPattern(for: key)
+        guard let regex = try? NSRegularExpression(
+            pattern: "</\\s*\(escapedTag)\\b[^>]*>",
+            options: [.caseInsensitive]
+        ) else { return nil }
+        closeTagPatternCache[key] = regex
+        return regex
+    }
+
     // MARK: - Public API
 
     public static func normalizeContent(
@@ -363,6 +401,21 @@ public struct StreamdownParser: Sendable {
             let line = lines[startIndex].text
             htmlLines.append(line)
 
+            // Check for new nested block-level tags opening on this line
+            if let nestedTag = htmlBlockStartTag(in: line) {
+                let nestedLower = nestedTag.lowercased()
+                if !htmlVoidTags.contains(nestedLower) {
+                    let nestedOpenCount = countNonSelfClosingOpenTags(line: line, tag: nestedLower)
+                    let nestedCloseCount = countClosingTags(line: line, tag: nestedLower)
+                    let netNested = nestedOpenCount - nestedCloseCount
+                    if netNested > 0 {
+                        openTags.append(contentsOf: Array(repeating: nestedLower, count: netNested))
+                        startIndex += 1
+                        continue
+                    }
+                }
+            }
+
             guard let currentTag = openTags.last else {
                 break
             }
@@ -445,13 +498,8 @@ public struct StreamdownParser: Sendable {
 
     private static func countNonSelfClosingOpenTags(line: String, tag: String) -> Int {
         guard !htmlVoidTags.contains(tag.lowercased()) else { return 0 }
-        let lowercasedTag = tag.lowercased()
-        let escapedTag = NSRegularExpression.escapedPattern(for: lowercasedTag)
-        let pattern = "<\\s*\(escapedTag)\\b[^>]*>"
 
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
-            return 0
-        }
+        guard let regex = cachedOpenTagPattern(for: tag) else { return 0 }
 
         let nsLine = line as NSString
         let matches = regex.matches(
@@ -471,13 +519,7 @@ public struct StreamdownParser: Sendable {
     }
 
     private static func countClosingTags(line: String, tag: String) -> Int {
-        let lowercasedTag = tag.lowercased()
-        let escapedTag = NSRegularExpression.escapedPattern(for: lowercasedTag)
-        let pattern = "</\\s*\(escapedTag)\\b[^>]*>"
-
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
-            return 0
-        }
+        guard let regex = cachedCloseTagPattern(for: tag) else { return 0 }
 
         let nsLine = line as NSString
         return regex.numberOfMatches(
