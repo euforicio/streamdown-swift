@@ -102,10 +102,7 @@ public struct StreamdownParser: Sendable {
             return []
         }
 
-        let footnoteReferencePattern = #/\[\^[\w-]{1,200}\](?!:)/#
-        let footnoteDefinitionPattern = #/\[\^[\w-]{1,200}\]:/#
-        if normalized.contains(footnoteReferencePattern)
-            || normalized.contains(footnoteDefinitionPattern) {
+        if normalized.contains("[^") {
             return [
                 StreamdownParsedBlock(
                     block: .markdown(normalized),

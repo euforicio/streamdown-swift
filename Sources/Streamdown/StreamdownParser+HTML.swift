@@ -111,7 +111,7 @@ extension StreamdownParser {
             return nil
         }
 
-        let selfClosing = trimmed.hasSuffix("/>") || trimmed.range(of: #"/>$"#, options: .regularExpression) != nil
+        let selfClosing = trimmed.hasSuffix("/>")
         if selfClosing {
             return nil
         }

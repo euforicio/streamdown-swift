@@ -175,14 +175,121 @@ public actor StreamdownRenderActor {
     private static func containsInlineMarkdownSyntax(_ text: String) -> Bool {
         guard !text.isEmpty else { return false }
 
-        if text.contains(#/`[^`\n]+`/#) { return true }
-        if text.contains(#/\[[^\]\n]+\]\([^)]+\)/#) { return true }
-        if text.contains(#/\*\*[^*\n]+\*\*/#) { return true }
-        if text.contains(#/\*[^*\n]+\*/#) { return true }
-        if text.contains(#/~~[^~\n]+~~/#) { return true }
-        if text.contains(#/\\[*_`\[\]()~]/#) { return true }
-        if text.contains(#/(^|[^\w])__[^_\n]+__(?=[^\w]|$)/#) { return true }
-        if text.contains(#/(^|[^\w])_[^_\n]+_(?=[^\w]|$)/#) { return true }
+        var i = text.startIndex
+        while i < text.endIndex {
+            switch text[i] {
+            case "`":
+                // Inline code: look for closing backtick
+                let next = text.index(after: i)
+                if next < text.endIndex {
+                    var j = next
+                    while j < text.endIndex {
+                        if text[j] == "`" { return true }
+                        if text[j] == "\n" { break }
+                        j = text.index(after: j)
+                    }
+                }
+            case "*":
+                // Bold (**) or italic (*)
+                let next = text.index(after: i)
+                if next < text.endIndex {
+                    if text[next] == "*" {
+                        // Bold: look for closing **
+                        let afterStars = text.index(after: next)
+                        if afterStars < text.endIndex {
+                            var j = afterStars
+                            while j < text.endIndex {
+                                if text[j] == "*" {
+                                    let jNext = text.index(after: j)
+                                    if jNext < text.endIndex && text[jNext] == "*" { return true }
+                                }
+                                if text[j] == "\n" { break }
+                                j = text.index(after: j)
+                            }
+                        }
+                    } else if text[next] != " " && text[next] != "\n" {
+                        // Italic: look for closing *
+                        var j = next
+                        while j < text.endIndex {
+                            if text[j] == "*" { return true }
+                            if text[j] == "\n" { break }
+                            j = text.index(after: j)
+                        }
+                    }
+                }
+            case "~":
+                // Strikethrough: ~~text~~
+                let next = text.index(after: i)
+                if next < text.endIndex && text[next] == "~" {
+                    let afterTildes = text.index(after: next)
+                    if afterTildes < text.endIndex {
+                        var j = afterTildes
+                        while j < text.endIndex {
+                            if text[j] == "~" {
+                                let jNext = text.index(after: j)
+                                if jNext < text.endIndex && text[jNext] == "~" { return true }
+                            }
+                            if text[j] == "\n" { break }
+                            j = text.index(after: j)
+                        }
+                    }
+                }
+            case "[":
+                // Link: [text](url)
+                var j = text.index(after: i)
+                while j < text.endIndex {
+                    if text[j] == "]" {
+                        let afterBracket = text.index(after: j)
+                        if afterBracket < text.endIndex && text[afterBracket] == "(" { return true }
+                        break
+                    }
+                    if text[j] == "\n" { break }
+                    j = text.index(after: j)
+                }
+            case "_":
+                // Bold (__) or italic (_)
+                let next = text.index(after: i)
+                if next < text.endIndex {
+                    if text[next] == "_" {
+                        // __bold__: look for closing __
+                        let afterUnderscores = text.index(after: next)
+                        if afterUnderscores < text.endIndex {
+                            var j = afterUnderscores
+                            while j < text.endIndex {
+                                if text[j] == "_" {
+                                    let jNext = text.index(after: j)
+                                    if jNext < text.endIndex && text[jNext] == "_" { return true }
+                                }
+                                if text[j] == "\n" { break }
+                                j = text.index(after: j)
+                            }
+                        }
+                    } else if text[next] != " " && text[next] != "\n" {
+                        // _italic_: look for closing _
+                        var j = next
+                        while j < text.endIndex {
+                            if text[j] == "_" { return true }
+                            if text[j] == "\n" { break }
+                            j = text.index(after: j)
+                        }
+                    }
+                }
+            case "\\":
+                // Escape sequences: \*, \_, \`, etc.
+                let next = text.index(after: i)
+                if next < text.endIndex {
+                    switch text[next] {
+                    case "*", "_", "`", "[", "]", "(", ")", "~":
+                        return true
+                    default:
+                        break
+                    }
+                }
+            default:
+                break
+            }
+            i = text.index(after: i)
+        }
 
         return false
     }
