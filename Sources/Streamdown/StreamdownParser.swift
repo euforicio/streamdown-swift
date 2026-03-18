@@ -102,7 +102,7 @@ public struct StreamdownParser: Sendable {
             return []
         }
 
-        if normalized.contains("[^") {
+        if containsFootnote(normalized) {
             return [
                 StreamdownParsedBlock(
                     block: .markdown(normalized),
@@ -265,6 +265,40 @@ public struct StreamdownParser: Sendable {
     ) -> [StreamdownBlock] {
         let normalized = normalizeContent(content, normalizeHtmlIndentation: normalizeHtmlIndentation)
         return parse(normalized, mode: mode, parseIncompleteMarkdown: parseIncompleteMarkdown).map(\.block)
+    }
+
+    // MARK: - Footnote Detection
+
+    /// Scans for `[^` followed by 1–200 word/hyphen characters and a closing `]`,
+    /// optionally followed by `:` for definitions. Matches the same tokens as the
+    /// old regex patterns without the overhead.
+    private static func containsFootnote(_ text: String) -> Bool {
+        let chars = Array(text.unicodeScalars)
+        let count = chars.count
+        var i = 0
+        while i < count - 2 {
+            if chars[i] == "[" && chars[i + 1] == "^" {
+                var j = i + 2
+                var labelLen = 0
+                while j < count && labelLen < 200 {
+                    let c = chars[j]
+                    if c == "]" { break }
+                    let isWordOrHyphen = c == "-"
+                        || (c >= "a" && c <= "z")
+                        || (c >= "A" && c <= "Z")
+                        || (c >= "0" && c <= "9")
+                        || c == "_"
+                    if !isWordOrHyphen { break }
+                    labelLen += 1
+                    j += 1
+                }
+                if labelLen >= 1 && j < count && chars[j] == "]" {
+                    return true
+                }
+            }
+            i += 1
+        }
+        return false
     }
 
     // MARK: - Line splitting

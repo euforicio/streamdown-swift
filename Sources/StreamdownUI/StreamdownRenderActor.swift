@@ -172,6 +172,10 @@ public actor StreamdownRenderActor {
         return StreamdownInlineContent(attributed: parsed)
     }
 
+    private static func isWordChar(_ c: Character) -> Bool {
+        c.isLetter || c.isNumber || c == "_"
+    }
+
     private static func containsInlineMarkdownSyntax(_ text: String) -> Bool {
         guard !text.isEmpty else { return false }
 
@@ -179,98 +183,163 @@ public actor StreamdownRenderActor {
         while i < text.endIndex {
             switch text[i] {
             case "`":
-                // Inline code: look for closing backtick
+                // Inline code: `content` — require at least 1 non-backtick char
                 let next = text.index(after: i)
                 if next < text.endIndex {
                     var j = next
+                    var hasContent = false
                     while j < text.endIndex {
-                        if text[j] == "`" { return true }
+                        if text[j] == "`" {
+                            if hasContent { return true }
+                            break
+                        }
                         if text[j] == "\n" { break }
+                        hasContent = true
                         j = text.index(after: j)
                     }
+                    i = j // skip past scanned region
+                    continue
                 }
             case "*":
-                // Bold (**) or italic (*)
                 let next = text.index(after: i)
                 if next < text.endIndex {
                     if text[next] == "*" {
-                        // Bold: look for closing **
+                        // Bold **content** — require at least 1 non-* char
                         let afterStars = text.index(after: next)
                         if afterStars < text.endIndex {
                             var j = afterStars
+                            var hasContent = false
                             while j < text.endIndex {
                                 if text[j] == "*" {
                                     let jNext = text.index(after: j)
-                                    if jNext < text.endIndex && text[jNext] == "*" { return true }
+                                    if jNext < text.endIndex && text[jNext] == "*" {
+                                        if hasContent { return true }
+                                        break
+                                    }
                                 }
                                 if text[j] == "\n" { break }
+                                hasContent = true
                                 j = text.index(after: j)
                             }
+                            i = j // skip past scanned region
+                            continue
                         }
                     } else if text[next] != " " && text[next] != "\n" {
-                        // Italic: look for closing *
+                        // Italic *content* — require at least 1 non-* char
                         var j = next
+                        var hasContent = false
                         while j < text.endIndex {
-                            if text[j] == "*" { return true }
+                            if text[j] == "*" {
+                                if hasContent { return true }
+                                break
+                            }
                             if text[j] == "\n" { break }
+                            hasContent = true
                             j = text.index(after: j)
                         }
+                        i = j // skip past scanned region
+                        continue
                     }
                 }
             case "~":
-                // Strikethrough: ~~text~~
+                // Strikethrough ~~content~~ — require at least 1 non-~ char
                 let next = text.index(after: i)
                 if next < text.endIndex && text[next] == "~" {
                     let afterTildes = text.index(after: next)
                     if afterTildes < text.endIndex {
                         var j = afterTildes
+                        var hasContent = false
                         while j < text.endIndex {
                             if text[j] == "~" {
                                 let jNext = text.index(after: j)
-                                if jNext < text.endIndex && text[jNext] == "~" { return true }
+                                if jNext < text.endIndex && text[jNext] == "~" {
+                                    if hasContent { return true }
+                                    break
+                                }
                             }
                             if text[j] == "\n" { break }
+                            hasContent = true
                             j = text.index(after: j)
                         }
+                        i = j // skip past scanned region
+                        continue
                     }
                 }
             case "[":
-                // Link: [text](url)
+                // Link [text](url) — require content in [] and closing )
                 var j = text.index(after: i)
+                var hasLinkText = false
                 while j < text.endIndex {
                     if text[j] == "]" {
                         let afterBracket = text.index(after: j)
-                        if afterBracket < text.endIndex && text[afterBracket] == "(" { return true }
+                        if hasLinkText && afterBracket < text.endIndex && text[afterBracket] == "(" {
+                            // Scan for closing )
+                            var k = text.index(after: afterBracket)
+                            while k < text.endIndex {
+                                if text[k] == ")" { return true }
+                                if text[k] == "\n" { break }
+                                k = text.index(after: k)
+                            }
+                        }
                         break
                     }
                     if text[j] == "\n" { break }
+                    hasLinkText = true
                     j = text.index(after: j)
                 }
+                i = j // skip past scanned region
+                continue
             case "_":
-                // Bold (__) or italic (_)
+                let prev: Character? = i > text.startIndex ? text[text.index(before: i)] : nil
                 let next = text.index(after: i)
                 if next < text.endIndex {
                     if text[next] == "_" {
-                        // __bold__: look for closing __
-                        let afterUnderscores = text.index(after: next)
-                        if afterUnderscores < text.endIndex {
-                            var j = afterUnderscores
-                            while j < text.endIndex {
-                                if text[j] == "_" {
-                                    let jNext = text.index(after: j)
-                                    if jNext < text.endIndex && text[jNext] == "_" { return true }
+                        // __bold__ — require word boundary before opening __
+                        if prev == nil || !isWordChar(prev!) {
+                            let afterUnderscores = text.index(after: next)
+                            if afterUnderscores < text.endIndex {
+                                var j = afterUnderscores
+                                var hasContent = false
+                                while j < text.endIndex {
+                                    if text[j] == "_" {
+                                        let jNext = text.index(after: j)
+                                        if jNext < text.endIndex && text[jNext] == "_" {
+                                            // Check word boundary after closing __
+                                            let afterClose = text.index(after: jNext)
+                                            let afterIsNonWord = afterClose >= text.endIndex
+                                                || !isWordChar(text[afterClose])
+                                            if hasContent && afterIsNonWord { return true }
+                                            break
+                                        }
+                                    }
+                                    if text[j] == "\n" { break }
+                                    hasContent = true
+                                    j = text.index(after: j)
                                 }
-                                if text[j] == "\n" { break }
-                                j = text.index(after: j)
+                                i = j // skip past scanned region
+                                continue
                             }
                         }
                     } else if text[next] != " " && text[next] != "\n" {
-                        // _italic_: look for closing _
-                        var j = next
-                        while j < text.endIndex {
-                            if text[j] == "_" { return true }
-                            if text[j] == "\n" { break }
-                            j = text.index(after: j)
+                        // _italic_ — require word boundary before opening _
+                        if prev == nil || !isWordChar(prev!) {
+                            var j = next
+                            var hasContent = false
+                            while j < text.endIndex {
+                                if text[j] == "_" {
+                                    // Check word boundary after closing _
+                                    let afterClose = text.index(after: j)
+                                    let afterIsNonWord = afterClose >= text.endIndex
+                                        || !isWordChar(text[afterClose])
+                                    if hasContent && afterIsNonWord { return true }
+                                    break
+                                }
+                                if text[j] == "\n" { break }
+                                hasContent = true
+                                j = text.index(after: j)
+                            }
+                            i = j // skip past scanned region
+                            continue
                         }
                     }
                 }
