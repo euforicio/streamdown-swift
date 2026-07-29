@@ -33,7 +33,7 @@ Add the package to your `Package.swift`:
 Three targets are available:
 
 - **Streamdown** — parsing only, no UI dependencies
-- **StreamdownUI** — SwiftUI views, depends on [MarkdownUI](https://github.com/gonzalezreal/swift-markdown-ui)
+- **StreamdownUI** — SwiftUI views, uses [MarkdownView](https://github.com/LiYanan2004/MarkdownView) for prose blocks
 - **EuforicAI** — full chat UI component library (design system, message views, conversation views, panels), depends on Streamdown + StreamdownUI
 
 ```swift
@@ -271,7 +271,7 @@ Sources/
 │   ├── StreamdownParsedBlock.swift     # Block + character range
 │   └── StreamdownTableData.swift       # Export (CSV/TSV/Markdown)
 │
-└── StreamdownUI/                # SwiftUI views — depends on Streamdown + MarkdownUI
+└── StreamdownUI/                # SwiftUI views — depends on Streamdown + MarkdownView
     ├── StreamdownView.swift            # Main entry point
     ├── StreamdownControls.swift        # Toolbar config
     ├── StreamdownTheme.swift           # Theme + environment key
@@ -297,7 +297,7 @@ The test suite covers parsing (code fences, HTML blocks, tables, math blocks, mi
 ## Acknowledgments
 
 - Inspired by [vercel/streamdown](https://github.com/nicepkg/streamdown)
-- Markdown rendering powered by [MarkdownUI](https://github.com/gonzalezreal/swift-markdown-ui)
+- Prose-block rendering powered by [MarkdownView](https://github.com/LiYanan2004/MarkdownView); Streamdown retains streaming parsing, block reuse, code, and table rendering
 
 ## License
 

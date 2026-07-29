@@ -11,7 +11,11 @@ let package = Package(
         .library(name: "EuforicAI", targets: ["EuforicAI"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", from: "2.4.1"),
+        .package(
+            url: "https://github.com/LiYanan2004/MarkdownView.git",
+            from: "3.0.0",
+            traits: []
+        ),
     ],
     targets: [
         .target(name: "Streamdown"),
@@ -19,7 +23,7 @@ let package = Package(
             name: "StreamdownUI",
             dependencies: [
                 "Streamdown",
-                .product(name: "MarkdownUI", package: "swift-markdown-ui"),
+                .product(name: "MarkdownView", package: "MarkdownView"),
             ]
         ),
         .target(
@@ -27,7 +31,6 @@ let package = Package(
             dependencies: [
                 "Streamdown",
                 "StreamdownUI",
-                .product(name: "MarkdownUI", package: "swift-markdown-ui"),
             ]
         ),
         .testTarget(

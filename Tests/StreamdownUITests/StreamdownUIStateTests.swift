@@ -20,6 +20,43 @@ import Testing
     #expect(model.snapshot.blocks.count == 1)
 }
 
+@Test func renderActorKeepsMarkdownSourceAndReusesStableBlocks() async {
+    let actor = StreamdownRenderActor()
+    let initialContent = """
+    Intro with **emphasis**.
+
+    ```swift
+    let value = 1
+    ```
+
+    Tail
+    """
+    let initial = await actor.renderSnapshot(
+        content: initialContent,
+        mode: .streaming,
+        parseIncompleteMarkdown: true,
+        normalizeHtmlIndentation: false,
+        previous: nil
+    )
+
+    guard case let .markdown(intro) = initial.blocks.first else {
+        Issue.record("Expected the first rendered block to remain markdown")
+        return
+    }
+    #expect(intro.source == "Intro with **emphasis**.\n")
+
+    let updated = await actor.renderSnapshot(
+        content: initialContent + " extended",
+        mode: .streaming,
+        parseIncompleteMarkdown: true,
+        normalizeHtmlIndentation: false,
+        previous: initial
+    )
+
+    #expect(updated.reusedBlockCount == 2)
+    #expect(updated.reusedRenderedBlockCount == 2)
+}
+
 @MainActor
 @Test func codeBlockStatePublishesUpdatedContent() async {
     let state = CodeBlockRenderState(code: "let value = 1", language: "swift")

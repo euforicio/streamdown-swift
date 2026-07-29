@@ -3,8 +3,6 @@ import SwiftUI
 
 @MainActor
 final class CodeBlockRenderState: ObservableObject {
-    private static let defaultMaxDisplayedLines = 400
-
     private struct DisplayWindow: Sendable {
         let displayedLineStart: Int
         let lineTexts: [String]
@@ -41,7 +39,7 @@ final class CodeBlockRenderState: ObservableObject {
     init(
         code: String,
         language: String?,
-        maxDisplayedLines: Int = defaultMaxDisplayedLines,
+        maxDisplayedLines: Int = 400,
         foreground: Color = Color(white: 0.93),
         secondaryLabel: Color = Color(white: 0.55)
     ) {
