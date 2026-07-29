@@ -34,5 +34,9 @@ let package = Package(
             name: "StreamdownTests",
             dependencies: ["Streamdown"]
         ),
+        .testTarget(
+            name: "StreamdownUITests",
+            dependencies: ["Streamdown", "StreamdownUI"]
+        ),
     ]
 )

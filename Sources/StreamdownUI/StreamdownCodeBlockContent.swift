@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 #if canImport(UIKit)
@@ -13,7 +14,7 @@ public struct StreamdownCodeBlockContent: View {
     var showHeader: Bool
 
     @Environment(\.streamdownTheme) private var theme
-    @State private var renderState: CodeBlockRenderState?
+    @StateObject private var renderState: CodeBlockRenderState
     @State private var copied = false
 
     public init(
@@ -26,10 +27,13 @@ public struct StreamdownCodeBlockContent: View {
         self.code = code
         self.showLineNumbers = showLineNumbers
         self.showHeader = showHeader
+        _renderState = StateObject(
+            wrappedValue: CodeBlockRenderState(code: code, language: language)
+        )
     }
 
     private var lineNumberWidth: CGFloat {
-        let lineCount = max(1, (renderState?.displayedLineUpperBound ?? 1))
+        let lineCount = max(1, renderState.displayedLineUpperBound)
         let digitCount = CGFloat(max(2, String(lineCount).count))
         return digitCount * 7.5 + 10
     }
@@ -59,21 +63,17 @@ public struct StreamdownCodeBlockContent: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(theme.colors.separator.opacity(0.45), lineWidth: 1)
         )
+        .onReceive(Just(code)) { currentCode in
+            renderState.update(code: currentCode, language: language)
+        }
+        .onReceive(Just(language)) { currentLanguage in
+            renderState.update(code: code, language: currentLanguage)
+        }
         .onAppear {
-            if renderState == nil {
-                renderState = CodeBlockRenderState(
-                    code: code,
-                    language: language,
-                    foreground: theme.colors.foreground,
-                    secondaryLabel: theme.colors.secondaryLabel
-                )
-            }
-        }
-        .onChange(of: code) { _, newValue in
-            renderState?.update(code: newValue, language: language)
-        }
-        .onChange(of: language) { _, newValue in
-            renderState?.update(code: code, language: newValue)
+            renderState.updateAppearance(
+                foreground: theme.colors.foreground,
+                secondaryLabel: theme.colors.secondaryLabel
+            )
         }
     }
 
@@ -92,7 +92,7 @@ public struct StreamdownCodeBlockContent: View {
 
             Spacer()
             Button {
-                copyToClipboard(renderState?.normalizedCode ?? code)
+                copyToClipboard(renderState.normalizedCode)
             } label: {
                 Image(systemName: copied ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 12, weight: .medium))
@@ -114,14 +114,12 @@ public struct StreamdownCodeBlockContent: View {
 
     private var nonNumberedCode: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let renderState {
-                ForEach(renderState.highlightedLines.indices, id: \.self) { index in
-                    Text(renderState.highlightedLines[index])
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.vertical, 1)
-                        .font(contentFont)
-                }
+            ForEach(renderState.highlightedLines.indices, id: \.self) { index in
+                Text(renderState.highlightedLines[index])
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 1)
+                    .font(contentFont)
             }
         }
         .padding(.top, 4)
@@ -131,25 +129,23 @@ public struct StreamdownCodeBlockContent: View {
 
     private var numberedCode: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let renderState {
-                ForEach(Array(renderState.lineTexts.enumerated()), id: \.offset) { index, _ in
-                    HStack(alignment: .firstTextBaseline, spacing: theme.spacing.sm) {
-                        Text("\(renderState.displayedLineStart + index + 1)")
-                            .font(lineNumberFont.monospacedDigit())
-                            .foregroundStyle(theme.colors.tertiaryLabel)
-                            .lineLimit(1)
-                            .frame(width: lineNumberWidth, alignment: .trailing)
-                            .padding(.leading, 2)
+            ForEach(Array(renderState.lineTexts.enumerated()), id: \.offset) { index, _ in
+                HStack(alignment: .firstTextBaseline, spacing: theme.spacing.sm) {
+                    Text("\(renderState.displayedLineStart + index + 1)")
+                        .font(lineNumberFont.monospacedDigit())
+                        .foregroundStyle(theme.colors.tertiaryLabel)
+                        .lineLimit(1)
+                        .frame(width: lineNumberWidth, alignment: .trailing)
+                        .padding(.leading, 2)
 
-                        Text(renderState.highlightedLines[index])
-                            .font(contentFont)
-                            .textSelection(.enabled)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.vertical, 1)
-                    }
-                    .padding(.leading, 1)
-                    .padding(.trailing, 1)
+                    Text(renderState.highlightedLines[index])
+                        .font(contentFont)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.vertical, 1)
                 }
+                .padding(.leading, 1)
+                .padding(.trailing, 1)
             }
         }
         .padding(.top, 4)

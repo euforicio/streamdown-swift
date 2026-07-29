@@ -1,14 +1,13 @@
-import Observation
+import Combine
 import Streamdown
 
 @MainActor
-@Observable
-public final class StreamdownRenderModel {
-    private(set) var snapshot: StreamdownRenderSnapshot = .empty
+public final class StreamdownRenderModel: ObservableObject {
+    @Published private(set) var snapshot: StreamdownRenderSnapshot = .empty
 
-    @ObservationIgnored private let parser: StreamdownRenderActor
-    @ObservationIgnored private var renderTask: Task<Void, Never>?
-    @ObservationIgnored private var requestID = 0
+    private let parser: StreamdownRenderActor
+    private var renderTask: Task<Void, Never>?
+    private var requestID = 0
 
     public init(parser: StreamdownRenderActor = StreamdownRenderActor()) {
         self.parser = parser

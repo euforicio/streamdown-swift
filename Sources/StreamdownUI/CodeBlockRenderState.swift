@@ -1,9 +1,8 @@
-import Observation
+import Combine
 import SwiftUI
 
-@Observable
 @MainActor
-final class CodeBlockRenderState {
+final class CodeBlockRenderState: ObservableObject {
     private static let defaultMaxDisplayedLines = 400
 
     private struct DisplayWindow: Sendable {
@@ -18,11 +17,11 @@ final class CodeBlockRenderState {
         let displayWindow: DisplayWindow
     }
 
-    private(set) var normalizedCode: String
-    private(set) var displayedLineStart: Int
-    private(set) var lineTexts: [String]
-    private(set) var highlightedLines: [AttributedString]
-    private(set) var renderVersion = 1
+    @Published private(set) var normalizedCode: String
+    @Published private(set) var displayedLineStart: Int
+    @Published private(set) var lineTexts: [String]
+    @Published private(set) var highlightedLines: [AttributedString]
+    @Published private(set) var renderVersion = 1
 
     var displayedLineUpperBound: Int {
         displayedLineStart + lineTexts.count
@@ -32,8 +31,8 @@ final class CodeBlockRenderState {
     private var renderTask: Task<Void, Never>?
     private var pendingGeneration = 0
     private let maxDisplayedLines: Int
-    private let foreground: Color
-    private let secondaryLabel: Color
+    private var foreground: Color
+    private var secondaryLabel: Color
 
     convenience init(foreground: Color = Color(white: 0.93), secondaryLabel: Color = Color(white: 0.55)) {
         self.init(code: "", language: nil, foreground: foreground, secondaryLabel: secondaryLabel)
@@ -75,6 +74,40 @@ final class CodeBlockRenderState {
         self.normalizedLanguage = normalizedLanguage
         pendingGeneration &+= 1
         let generation = pendingGeneration
+        let maxDisplayedLines = self.maxDisplayedLines
+        let foreground = self.foreground
+        let secondaryLabel = self.secondaryLabel
+        renderTask?.cancel()
+        renderTask = Task { [normalizedCode, normalizedLanguage] in
+            let renderResult = await Task.detached(priority: .userInitiated) {
+                Self.renderResult(
+                    normalizedCode: normalizedCode,
+                    normalizedLanguage: normalizedLanguage,
+                    maxDisplayedLines: maxDisplayedLines,
+                    foreground: foreground,
+                    secondaryLabel: secondaryLabel
+                )
+            }.value
+            guard !Task.isCancelled else { return }
+            self.apply(renderResult, generation: generation)
+        }
+    }
+
+    func updateAppearance(foreground: Color, secondaryLabel: Color) {
+        guard foreground != self.foreground || secondaryLabel != self.secondaryLabel else {
+            return
+        }
+
+        self.foreground = foreground
+        self.secondaryLabel = secondaryLabel
+        scheduleRender()
+    }
+
+    private func scheduleRender() {
+        pendingGeneration &+= 1
+        let generation = pendingGeneration
+        let normalizedCode = self.normalizedCode
+        let normalizedLanguage = self.normalizedLanguage
         let maxDisplayedLines = self.maxDisplayedLines
         let foreground = self.foreground
         let secondaryLabel = self.secondaryLabel
