@@ -1,5 +1,5 @@
 import SwiftUI
-@preconcurrency import MarkdownUI
+import MarkdownView
 import Streamdown
 
 #if canImport(UIKit)
@@ -7,22 +7,6 @@ import UIKit
 #elseif canImport(AppKit)
 import AppKit
 #endif
-
-// MARK: - MarkdownUI Theme Extension
-
-extension Theme {
-    @MainActor static func streamdownHighlighted(theme: StreamdownTheme) -> Theme {
-        .gitHub.text {
-            ForegroundColor(.primary)
-        }
-        .codeBlock { configuration in
-            StreamdownCodeBlockContent(
-                language: configuration.language,
-                code: configuration.content
-            )
-        }
-    }
-}
 
 // MARK: - StreamdownView
 
@@ -50,6 +34,7 @@ public struct StreamdownView: View {
     let animation: StreamdownAnimationConfig
 
     @Environment(\.streamdownTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var modalURL: URL?
     @State private var modalIsPresented: Bool = false
     @StateObject private var renderModel = StreamdownRenderModel()
@@ -133,9 +118,18 @@ public struct StreamdownView: View {
                         tableBlock(table)
                     }
                 }
-                .opacity(visibleBlockIDs.contains(block.id) ? 1 : (animation.enabled && isStreaming ? 0 : 1))
+                .opacity(
+                    visibleBlockIDs.contains(block.id)
+                        ? 1
+                        : (animation.enabled && isStreaming && !reduceMotion ? 0 : 1)
+                )
                 .onAppear {
-                    guard animation.enabled, isStreaming, !visibleBlockIDs.contains(block.id) else {
+                    guard
+                        animation.enabled,
+                        isStreaming,
+                        !reduceMotion,
+                        !visibleBlockIDs.contains(block.id)
+                    else {
                         visibleBlockIDs.insert(block.id)
                         return
                     }
@@ -168,12 +162,17 @@ public struct StreamdownView: View {
                 #endif
             }
         }
-        .animation(mode == .streaming ? nil : .easeInOut(duration: 0.2), value: renderModel.snapshot.blocks.map(\.id))
+        .animation(
+            mode == .streaming || !animation.enabled || reduceMotion
+                ? nil
+                : .easeInOut(duration: 0.2),
+            value: renderModel.snapshot.blocks.map(\.id)
+        )
     }
 
     private func markdownBlock(_ block: StreamdownMarkdownRenderBlock) -> some View {
-        Markdown(block.content.value)
-            .markdownTheme(.streamdownHighlighted(theme: theme))
+        MarkdownView(block.source)
+            .foregroundStyle(theme.colors.foreground)
             .textSelection(.enabled)
             .environment(\.openURL, OpenURLAction { url in
                 systemOpenHandler(url)

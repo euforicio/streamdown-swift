@@ -1,4 +1,3 @@
-@preconcurrency import MarkdownUI
 import Foundation
 import Streamdown
 import SwiftUI
@@ -103,8 +102,7 @@ public actor StreamdownRenderActor {
                 return .markdown(
                     StreamdownMarkdownRenderBlock(
                         id: blockID,
-                        source: source,
-                        content: ParsedMarkdownContent(value: MarkdownContent(source))
+                        source: source
                     )
                 )
             case let .code(language, code, startLine, isIncomplete):

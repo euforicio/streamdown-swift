@@ -27,6 +27,7 @@ public struct StreamdownLinkSafetyModal: View {
     let onOpen: () -> Void
 
     @Environment(\.streamdownTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var copied = false
 
     public init(
@@ -116,7 +117,7 @@ public struct StreamdownLinkSafetyModal: View {
             .frame(maxWidth: 420)
         }
         .transition(.opacity)
-        .animation(.easeInOut(duration: 0.15), value: isPresented)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: isPresented)
     }
 
     private func copyLink() {
