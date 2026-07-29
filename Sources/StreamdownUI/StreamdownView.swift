@@ -52,7 +52,7 @@ public struct StreamdownView: View {
     @Environment(\.streamdownTheme) private var theme
     @State private var modalURL: URL?
     @State private var modalIsPresented: Bool = false
-    @State private var renderModel = StreamdownRenderModel()
+    @StateObject private var renderModel = StreamdownRenderModel()
     @State private var visibleBlockIDs: Set<String> = []
 
     public init(
@@ -155,14 +155,17 @@ public struct StreamdownView: View {
             )
         }
         .onDisappear { renderModel.cancel() }
-        .overlay {
-            if modalIsPresented, let pending = modalURL {
+        .sheet(isPresented: $modalIsPresented) {
+            if let pending = modalURL {
                 StreamdownLinkSafetyModal(
                     url: pending.absoluteString,
                     isPresented: $modalIsPresented
                 ) {
                     openExternalURL(pending)
                 }
+                #if os(macOS)
+                .frame(width: 420, height: 280)
+                #endif
             }
         }
         .animation(mode == .streaming ? nil : .easeInOut(duration: 0.2), value: renderModel.snapshot.blocks.map(\.id))
@@ -183,9 +186,11 @@ public struct StreamdownView: View {
         startLine: Int?,
         isIncomplete: Bool
     ) -> some View {
-        let isMermaidFlowchart = language?.lowercased().contains("mermaid") == true
-        let controlsCopy = isMermaidFlowchart ? controls.mermaid.copy : controls.code.copy
-        let controlsDownload = isMermaidFlowchart ? controls.mermaid.download : controls.code.download
+        let normalizedLanguage = language?.lowercased()
+        let isMermaidFlowchart = ["mermaid", "flowchart", "graphviz"].contains(normalizedLanguage)
+        let controlsEnabled = isMermaidFlowchart ? controls.mermaid.enabled : controls.code.enabled
+        let controlsCopy = controlsEnabled && (isMermaidFlowchart ? controls.mermaid.copy : controls.code.copy)
+        let controlsDownload = controlsEnabled && (isMermaidFlowchart ? controls.mermaid.download : controls.code.download)
 
         if controlsCopy || controlsDownload {
             return AnyView(
@@ -197,8 +202,8 @@ public struct StreamdownView: View {
                     controlsCopy: controlsCopy,
                     controlsDownload: controlsDownload,
                     isStreaming: isStreaming,
-                    showFullscreen: isMermaidFlowchart ? controls.mermaid.fullscreen : false,
-                    isMermaid: isMermaidFlowchart,
+                    showFullscreen: controlsEnabled && isMermaidFlowchart ? controls.mermaid.fullscreen : false,
+                    isMermaid: controlsEnabled && isMermaidFlowchart,
                     mermaidPanZoom: controls.mermaid.panZoom,
                     showLineNumbers: controls.code.lineNumbers
                 )
