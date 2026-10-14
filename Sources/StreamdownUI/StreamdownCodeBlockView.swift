@@ -29,21 +29,20 @@ struct StreamdownCodeBlockView: View {
 
     private var cornerRadius: CGFloat { 8 }
     private var headerIconSize: CGFloat { 12 }
-    private var controlTapPadding: CGFloat { 1 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: theme.spacing.sm) {
                 if let language {
                     Text(language)
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .font(.system(.caption, design: .monospaced).weight(.medium))
                         .foregroundStyle(theme.colors.secondaryLabel)
                         .textCase(.lowercase)
                         .lineLimit(1)
                 }
                 if let startLine {
                     Text("startLine \(startLine)")
-                        .font(.system(size: 11.5, weight: .regular, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced))
                         .foregroundStyle(theme.colors.tertiaryLabel)
                         .lineLimit(1)
                 }
@@ -58,6 +57,8 @@ struct StreamdownCodeBlockView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Copy code")
+                    .accessibilityValue(copied ? "Copied" : "")
                     .disabled(isStreaming)
                 }
 
@@ -67,6 +68,7 @@ struct StreamdownCodeBlockView: View {
                     } label: {
                         headerIcon(systemName: "arrow.down.to.line")
                     }
+                    .accessibilityLabel("Download code")
                     .disabled(isStreaming)
                 }
 
@@ -75,6 +77,7 @@ struct StreamdownCodeBlockView: View {
                         headerIcon(systemName: "arrow.up.left.and.arrow.down.right")
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Show code full screen")
                     .disabled(isStreaming)
                 }
             }
@@ -160,7 +163,11 @@ struct StreamdownCodeBlockView: View {
         Image(systemName: systemName)
             .font(.system(size: headerIconSize, weight: .medium))
             .foregroundStyle(foregroundStyle)
-            .padding(controlTapPadding)
+            #if os(iOS)
+            .frame(width: 44, height: 44)
+            #else
+            .padding(1)
+            #endif
             .contentShape(Rectangle())
     }
 
@@ -210,8 +217,14 @@ struct StreamdownCodeFullscreen: View {
         VStack(spacing: theme.spacing.sm) {
             HStack {
                 Spacer()
-                Button("Done") {
+                Button {
                     dismiss()
+                } label: {
+                    Text("Done")
+                        #if os(iOS)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                        #endif
                 }
                 .buttonStyle(.plain)
             }

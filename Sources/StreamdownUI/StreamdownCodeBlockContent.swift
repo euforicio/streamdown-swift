@@ -14,6 +14,7 @@ public struct StreamdownCodeBlockContent: View {
     var showHeader: Bool
 
     @Environment(\.streamdownTheme) private var theme
+    @ScaledMetric(relativeTo: .caption) private var codeFontSize: CGFloat = 13
     @StateObject private var renderState: CodeBlockRenderState
     @State private var copied = false
 
@@ -35,7 +36,7 @@ public struct StreamdownCodeBlockContent: View {
     private var lineNumberWidth: CGFloat {
         let lineCount = max(1, renderState.displayedLineUpperBound)
         let digitCount = CGFloat(max(2, String(lineCount).count))
-        return digitCount * 7.5 + 10
+        return codeFontSize * (digitCount * 0.7 + 0.8)
     }
 
     public var body: some View {
@@ -82,8 +83,7 @@ public struct StreamdownCodeBlockContent: View {
             HStack(spacing: theme.spacing.sm) {
                 if let language, !language.isEmpty {
                     Text(language.lowercased())
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .fontWeight(.medium)
+                        .font(.system(.caption, design: .monospaced).weight(.medium))
                         .foregroundStyle(theme.colors.secondaryLabel)
                         .textCase(.lowercase)
                         .lineLimit(1)
@@ -97,19 +97,25 @@ public struct StreamdownCodeBlockContent: View {
                 Image(systemName: copied ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(copied ? .green : .secondary)
+                    #if os(iOS)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+                    #endif
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Copy code")
+            .accessibilityValue(copied ? "Copied" : "")
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 4)
     }
 
     private var contentFont: Font {
-        .system(size: 11, weight: .regular, design: .monospaced)
+        .system(size: codeFontSize, weight: .regular, design: .monospaced)
     }
 
     private var lineNumberFont: Font {
-        .system(size: 11, weight: .medium, design: .monospaced)
+        .system(size: codeFontSize, weight: .medium, design: .monospaced)
     }
 
     private var nonNumberedCode: some View {
