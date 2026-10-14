@@ -71,10 +71,13 @@ public struct StreamdownCodeBlockContent: View {
             renderState.update(code: code, language: currentLanguage)
         }
         .onAppear {
-            renderState.updateAppearance(
-                foreground: theme.colors.foreground,
-                secondaryLabel: theme.colors.secondaryLabel
-            )
+            updateAppearance()
+        }
+        .onChange(of: theme.colors.foreground) {
+            updateAppearance()
+        }
+        .onChange(of: theme.colors.secondaryLabel) {
+            updateAppearance()
         }
     }
 
@@ -157,6 +160,13 @@ public struct StreamdownCodeBlockContent: View {
         .padding(.top, 4)
         .padding(.horizontal, theme.spacing.md)
         .padding(.vertical, theme.spacing.xs)
+    }
+
+    private func updateAppearance() {
+        renderState.updateAppearance(
+            foreground: theme.colors.foreground,
+            secondaryLabel: theme.colors.secondaryLabel
+        )
     }
 
     private func copyToClipboard(_ text: String) {
