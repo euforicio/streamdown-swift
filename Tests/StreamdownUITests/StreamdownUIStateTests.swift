@@ -85,3 +85,49 @@ import Testing
 
     #expect(state.renderVersion > initialVersion)
 }
+
+@Test func renderActorKeepsStreamingTableOpenForRows() async {
+    let full = """
+    Intro
+
+    | Name | Count |
+    | --- | --- |
+    | alpha | 1 |
+    | beta | 2 |
+
+    Done
+    """
+    let characters = Array(full)
+    // Wherever a chunk ends, the next render must still put the rows in the table.
+    for cut in 1..<characters.count {
+        let actor = StreamdownRenderActor()
+        let partial = await actor.renderSnapshot(
+            content: String(characters[..<cut]),
+            mode: .streaming,
+            parseIncompleteMarkdown: true,
+            normalizeHtmlIndentation: false,
+            previous: nil
+        )
+        let complete = await actor.renderSnapshot(
+            content: full,
+            mode: .streaming,
+            parseIncompleteMarkdown: true,
+            normalizeHtmlIndentation: false,
+            previous: partial
+        )
+        let tables = complete.blocks.compactMap { block -> StreamdownTableRenderBlock? in
+            if case let .table(table) = block { return table }
+            return nil
+        }
+        #expect(tables.count == 1, "chunk ending at \(cut)")
+        #expect(tables.first?.rows == [["alpha", "1"], ["beta", "2"]], "chunk ending at \(cut)")
+    }
+}
+
+@MainActor
+@Test func codeBlockStateKeepsEscapeSequences() {
+    let code = "std.debug.print(\"hi\\n\", .{});\r\nreturn;"
+    let state = CodeBlockRenderState(code: code, language: "zig")
+
+    #expect(state.lineTexts == ["std.debug.print(\"hi\\n\", .{});", "return;"])
+}
