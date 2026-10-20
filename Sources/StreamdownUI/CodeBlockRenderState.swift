@@ -125,10 +125,9 @@ final class CodeBlockRenderState: ObservableObject {
         }
     }
 
+    /// Line endings only: escape sequences such as `\n` are part of the code.
     nonisolated private static func normalize(_ code: String) -> String {
-        code
-            .replacingOccurrences(of: "\\r\\n", with: "\n")
-            .replacingOccurrences(of: "\\n", with: "\n")
+        code.replacingOccurrences(of: "\r\n", with: "\n")
     }
 
     nonisolated private static func normalize(_ language: String?) -> String {

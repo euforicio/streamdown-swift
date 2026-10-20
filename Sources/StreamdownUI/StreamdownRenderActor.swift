@@ -39,7 +39,14 @@ public actor StreamdownRenderActor {
         if let previous,
            normalized.hasPrefix(previous.normalizedContent),
            !previous.parsedBlocks.isEmpty {
-            let stableBlocks = Array(previous.parsedBlocks.dropLast())
+            // Every block before the last one with content is final. Trailing
+            // empty blocks don't count: the parser emits one after a table's
+            // delimiter row, and that table still gains rows as text arrives.
+            var stableBlocks = previous.parsedBlocks
+            while let last = stableBlocks.last, last.block.isBlank {
+                stableBlocks.removeLast()
+            }
+            stableBlocks.removeLast(min(1, stableBlocks.count))
             let offset = stableBlocks.last?.range.upperBound ?? 0
             let tailContent = normalized.characterSlice(from: offset)
             let tailBlocks = StreamdownParser.parse(
@@ -413,5 +420,14 @@ public actor StreamdownRenderActor {
         let emphasisBonus = trimmed.contains("**") || trimmed.contains("_") || trimmed.contains("`") ? 2 : 0
         let linkBonus = trimmed.contains("](") ? 4 : 0
         return CGFloat(cappedLength + emphasisBonus + linkBonus)
+    }
+}
+
+private extension StreamdownBlock {
+    var isBlank: Bool {
+        if case let .markdown(text) = self {
+            return text.allSatisfy(\.isWhitespace)
+        }
+        return false
     }
 }
