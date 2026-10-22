@@ -11,6 +11,9 @@ public struct EAIBadge: View {
     let text: String
     let variant: EAIBadgeVariant
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
     public init(_ text: String, variant: EAIBadgeVariant = .default) {
         self.text = text
         self.variant = variant
@@ -19,6 +22,7 @@ public struct EAIBadge: View {
     public var body: some View {
         Text(text)
             .font(.caption2.weight(.medium))
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, EAISpacing.sm)
             .padding(.vertical, EAISpacing.xxs)
             .foregroundStyle(foregroundColor)
@@ -26,7 +30,10 @@ public struct EAIBadge: View {
             .overlay {
                 if variant == .outline {
                     Capsule()
-                        .strokeBorder(EAIColors.border, lineWidth: 1)
+                        .strokeBorder(
+                            Color.primary.opacity(colorSchemeContrast == .increased ? 0.65 : 0.2),
+                            lineWidth: 1
+                        )
                 }
             }
     }
@@ -34,26 +41,24 @@ public struct EAIBadge: View {
     private var foregroundColor: Color {
         switch variant {
         case .default:
-            return EAIColors.primaryForeground
-        case .secondary:
-            return EAIColors.secondaryForeground
-        case .outline:
-            return EAIColors.foreground
+            return colorScheme == .dark ? .black : .white
+        case .secondary, .outline:
+            return .primary
         case .destructive:
-            return .white
+            return EAIComponentColors.destructiveForeground(for: colorScheme)
         }
     }
 
     private var backgroundColor: Color {
         switch variant {
         case .default:
-            return EAIColors.primary
+            return .primary
         case .secondary:
-            return EAIColors.secondary
+            return .primary.opacity(0.08)
         case .outline:
             return .clear
         case .destructive:
-            return EAIColors.destructive
+            return EAIComponentColors.destructiveBackground(for: colorScheme)
         }
     }
 }

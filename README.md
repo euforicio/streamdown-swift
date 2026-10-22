@@ -102,6 +102,48 @@ StreamdownView(
 )
 ```
 
+## Native components
+
+`EuforicAI` includes source-owned, shadcn-inspired SwiftUI primitives. They
+adapt to light and dark appearances without forcing a color scheme:
+
+```swift
+import EuforicAI
+
+EAIButton(.glass, action: refresh) {
+    Label("Refresh", systemImage: "arrow.clockwise")
+}
+EAIButton(.glassProminent, action: send) { Text("Send") }
+EAIActionIconButton(
+    systemName: "sidebar.left",
+    variant: .glass,
+    accessibilityLabel: "Show agents",
+    action: showAgents
+)
+EAIBadge("Working", variant: .secondary)
+EAIInput("Message", text: $draft, axis: .vertical)
+    .lineLimit(1...6)
+    .focused($composerFocused)
+    .onSubmit(send)
+```
+
+Buttons also offer `primary`, `secondary`, `outline`, `ghost`, `destructive`,
+and `link` variants, plus `isLoading` and `isDisabled`. Hit areas are at least
+44 points and grow with their labels. Parent `.disabled` state is respected.
+Glass variants use Apple's native button styles on the package's iOS/macOS 26+
+baseline. `glassProminent` pins a contrasting label and spinner even when the
+app uses a semantic primary tint. Destructive labels use opaque light/dark
+color pairs with normal-text contrast above 4.5:1. Input and outline borders
+strengthen when Increase Contrast is enabled. Icon sizes scale with Dynamic
+Type; supply a localized `accessibilityLabel` for every new icon button. Its
+optional `nil` default preserves legacy calls and leaves the symbol's native
+accessibility label unchanged, which may not describe the action.
+
+Badges and inputs remain flat content surfaces. `EAIInput` preserves
+native `TextField` focus, editing, submit, and accessibility behavior; use a
+native `SecureField` for passwords. Existing cards, menus, tabs, separators,
+and `Collapsible` remain available without another component framework.
+
 ## Block Types
 
 | Block | Description |
