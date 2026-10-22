@@ -34,6 +34,7 @@ public struct StreamdownView: View {
     let animation: StreamdownAnimationConfig
 
     @Environment(\.streamdownTheme) private var theme
+    @Environment(\.font) private var inheritedFont
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var modalURL: URL?
     @State private var modalIsPresented: Bool = false
@@ -172,6 +173,14 @@ public struct StreamdownView: View {
 
     private func markdownBlock(_ block: StreamdownMarkdownRenderBlock) -> some View {
         MarkdownView(block.source)
+            .font(inheritedFont ?? theme.fonts.body, for: .body)
+            .font(inheritedFont ?? theme.fonts.body, for: .blockQuote)
+            .font(Font.largeTitle, for: .h1)
+            .font(Font.title, for: .h2)
+            .font(Font.title2, for: .h3)
+            .font(Font.title3, for: .h4)
+            .font(Font.headline, for: .h5)
+            .font(theme.fonts.subheadline.weight(.semibold), for: .h6)
             .foregroundStyle(theme.colors.foreground)
             .textSelection(.enabled)
             .environment(\.openURL, OpenURLAction { url in

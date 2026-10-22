@@ -166,3 +166,15 @@ import Testing
         #expect(rows[0][0] == "🍎")
     }
 }
+
+@Test func streamingTableKeepsBegunRow() {
+    let input = "| Name | Age |\n| --- | --- |\n| Alice | 30 |\n|"
+    let blocks = StreamdownParser.parseBlocks(content: input, mode: .streaming)
+    #expect(blocks.count == 1)
+    if case let .table(_, rows, isIncomplete) = blocks.first {
+        #expect(rows == [["Alice", "30"]])
+        #expect(isIncomplete)
+    } else {
+        Issue.record("Expected a single table block")
+    }
+}

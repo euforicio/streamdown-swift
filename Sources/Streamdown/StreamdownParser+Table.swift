@@ -29,6 +29,11 @@ extension StreamdownParser {
 
             let row = parseTableRow(line)
             if row.isEmpty {
+                // While streaming, a row that has only begun ("|") is still
+                // part of the table, not a paragraph after it.
+                if isStreaming && index == lines.count - 1 {
+                    index += 1
+                }
                 break
             }
 
