@@ -25,6 +25,8 @@ struct StreamdownTableView: View {
 
     @Environment(\.streamdownTheme) private var theme
     @State private var isFullscreen = false
+    /// The width the table is laid out in (0 until it's measured).
+    @State private var measuredWidth: CGFloat = 0
     private let showCopy: Bool
     private let showDownload: Bool
     private let showFullscreen: Bool
@@ -164,7 +166,7 @@ struct StreamdownTableView: View {
     private var tableContent: some View {
         let safeColumnCount = max(columnCount, 1)
         let columnWidths = resolvedColumnWidths(
-            containerWidth: fallbackTableWidth,
+            containerWidth: measuredWidth > 0 ? measuredWidth : fallbackTableWidth,
             columnCount: safeColumnCount
         )
         let tableWidth = columnWidths.reduce(0, +)
@@ -211,6 +213,11 @@ struct StreamdownTableView: View {
         }
         .accessibilityElement(children: .contain)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Columns fill the width the table really has (a chat bubble, one
+        // screen of several), not the widest screen.
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
+            if abs(width - measuredWidth) > 0.5 { measuredWidth = width }
+        }
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityIdentifier("streamdown-table-scroll-view")
     }
@@ -377,20 +384,24 @@ extension StreamdownTableView {
     func resolvedColumnWidths(containerWidth: CGFloat, columnCount: Int) -> [CGFloat] {
         guard columnCount > 0 else { return [] }
 
-        let minWidth = theme.spacing.base * 10
         let weighted = (0..<columnCount).map { index in
             if columnWeights.indices.contains(index) {
                 return columnWeights[index]
             }
             return CGFloat(1)
         }
+        // A column of short values (numbers, a status) needs little room; one
+        // of words needs enough for a few of them.
+        let mins = weighted.map { weight in
+            weight <= 4 ? theme.spacing.base * 3 : theme.spacing.base * 6
+        }
         let totalWeight = max(weighted.reduce(0, +), .leastNonzeroMagnitude)
 
-        var widths = weighted.map { weight in
+        var widths = zip(weighted, mins).map { weight, minWidth in
             max((containerWidth * weight) / totalWeight, minWidth)
         }
 
-        let minimumTotal = minWidth * CGFloat(columnCount)
+        let minimumTotal = mins.reduce(0, +)
         let targetTotal = max(containerWidth, minimumTotal)
         let currentTotal = widths.reduce(0, +)
 
